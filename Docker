@@ -1,0 +1,19 @@
+# Используем официальный образ Python
+FROM python:3.9-slim
+
+# Устанавливаем переменные окружения
+ENV PYTHONUNBUFFERED True
+ENV APP_HOME /app
+WORKDIR $APP_HOME
+
+# Копируем файл с зависимостями и устанавливаем их
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем исходный код приложения
+COPY . .
+
+# Запускаем Gunicorn веб-сервер
+# Cloud Run автоматически установит переменную окружения $PORT
+# --timeout 0 отключает тайм-аут для длительных запросов
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
