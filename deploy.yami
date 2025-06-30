@@ -1,0 +1,48 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.CLOUD_RUN_REGION }}
+  SERVICE: ${{ secrets.CLOUD_RUN_SERVICE_NAME }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_JSON }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and Push Docker image
+        run: |
+          gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $SERVICE \
+            --image gcr.io/$PROJECT_ID/$SERVICE \
+            --region $REGION \
+            --platform managed \
+            --timeout=3600 \
+            --allow-unauthenticated \
+            --set-env-vars BITRIX_LEAD_URL=${{ secrets.BITRIX_LEAD_URL }} \
+            --set-env-vars BITRIX_DEAL_URL=${{ secrets.BITRIX_DEAL_URL }} \
+            --set-env-vars BITRIX_LEAD_USERFIELDS_URL=${{ secrets.BITRIX_LEAD_USERFIELDS_URL }} \
+            --set-env-vars BITRIX_DEAL_USERFIELDS_URL=${{ secrets.BITRIX_DEAL_USERFIELDS_URL }} \
+            --set-env-vars BITRIX_CONTACT_LIST_URL=${{ secrets.BITRIX_CONTACT_LIST_URL }} \
+            --set-env-vars BITRIX_USER_LIST_URL=${{ secrets.BITRIX_USER_LIST_URL }} \
+            --set-env-vars GCS_RAW_BUCKET=${{ secrets.GCS_RAW_BUCKET }} \
+            --set-env-vars GCS_STAGING_BUCKET=${{ secrets.GCS_STAGING_BUCKET }} \
+            --set-env-vars PAGE_SIZE=${{ secrets.PAGE_SIZE }}
